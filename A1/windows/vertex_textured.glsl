@@ -1,6 +1,6 @@
 attribute vec4 position;
 attribute vec2 texCoord;
-attribute vec4 color;
+
 
 varying vec2 texCoordVar;
 

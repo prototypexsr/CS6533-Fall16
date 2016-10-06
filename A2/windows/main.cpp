@@ -15,18 +15,22 @@ float textureOffset = 0.0;
  
 void display(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	//glUniform1f(timeUniform, textureOffset);
+	int timeSinceStart = glutGet(GLUT_ELAPSED_TIME);
+	glUniform1f(timeUniform, (float)timeSinceStart / 1000.0f);
 
 	Matrix4 objectMatrix;
-	objectMatrix = objectMatrix.makeZRotation(45.0);
+	//objectMatrix = objectMatrix.makeXRotation(0.01 * timeSinceStart);
+	objectMatrix = objectMatrix.makeYRotation(0.01 * timeSinceStart );
 	Matrix4 eyeMatrix;
-	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(-0.05, 0.1, 0.70));
-	Matrix4 modelViewMatrix = inv(eyeMatrix) * objectMatrix;
+	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(-0.05, 0.1, 0.70));
+	Matrix4 modelViewMatrix = eyeMatrix * objectMatrix;
+	//Matrix4 modelViewMatrix;
 	GLfloat glmatrix[16];
 	modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
 	glUniformMatrix4fv(modelviewMatrixUniformLocation, 1, false, glmatrix);
 	Matrix4 projectionMatrix;
-	projectionMatrix = projectionMatrix.makeProjection(120.0, 1.0, -0.9, -150.0);
+	projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0);
 	GLfloat glmatrixProjection[16];
 	projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
 	glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
@@ -67,6 +71,7 @@ void init() {
 
 	positionAttribute = glGetAttribLocation(program, "position");
 	colorAttribute = glGetAttribLocation(program, "color");
+	timeUniform = glGetUniformLocation(program, "time");
 
 	
 	modelviewMatrixUniformLocation = glGetUniformLocation(program, "modelViewMatrix");

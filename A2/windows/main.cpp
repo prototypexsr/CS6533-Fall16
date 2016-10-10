@@ -23,14 +23,14 @@ void display(void) {
 	//objectMatrix = objectMatrix.makeXRotation(0.01 * timeSinceStart);
 	objectMatrix = objectMatrix.makeYRotation(0.01 * timeSinceStart );
 	Matrix4 eyeMatrix;
-	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(-0.05, 0.1, 0.70));
-	Matrix4 modelViewMatrix = eyeMatrix * objectMatrix;
+	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.0, 2.90)); //z-value will decide how "far" away the object is
+	Matrix4 modelViewMatrix = inv(eyeMatrix) * objectMatrix; //keep eye matrix inverted at all times
 	//Matrix4 modelViewMatrix;
 	GLfloat glmatrix[16];
 	modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
 	glUniformMatrix4fv(modelviewMatrixUniformLocation, 1, false, glmatrix);
 	Matrix4 projectionMatrix;
-	projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0);
+	projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0); //vertical field of view is important (1st parameter)! higher vfov will allow for better perephial vision
 	GLfloat glmatrixProjection[16];
 	projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
 	glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
@@ -59,7 +59,7 @@ void display(void) {
 
 
 void init() {
-	//glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);

@@ -4,12 +4,13 @@
 
 
 GLuint program; 
-GLuint vertPositionVBO, vertTexCoordVBO, colorVBO;
-GLuint positionAttribute, colorAttribute, texCoordAttribute;
+GLuint vertPositionVBO, vertTexCoordVBO, colorVBO, normalVBO;
+GLuint positionAttribute, colorAttribute, texCoordAttribute, normalAttribute;
 GLuint texture;
 GLuint positionUniform, timeUniform;
 GLuint modelviewMatrixUniformLocation;
 GLuint projectionMatrixUniformLocation;
+GLuint colorUniformLocation;
  
 float textureOffset = 0.0;
  
@@ -21,19 +22,23 @@ void display(void) {
 
 	Matrix4 objectMatrix;
 	//objectMatrix = objectMatrix.makeXRotation(0.01 * timeSinceStart);
-	objectMatrix = objectMatrix.makeYRotation(0.01 * timeSinceStart );
+	objectMatrix = objectMatrix.makeYRotation(-0.02 * timeSinceStart );
 	Matrix4 eyeMatrix;
-	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.0, 2.90)); //z-value will decide how "far" away the object is
+	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.0, 3.00)); //z-value will decide how "far" away the object is
+	Matrix4 normalMatrix = transpose(inv(eyeMatrix));
 	Matrix4 modelViewMatrix = inv(eyeMatrix) * objectMatrix; //keep eye matrix inverted at all times
-	//Matrix4 modelViewMatrix;
+	//Matrix4 modelViewMatrix; 
 	GLfloat glmatrix[16];
 	modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
 	glUniformMatrix4fv(modelviewMatrixUniformLocation, 1, false, glmatrix);
 	Matrix4 projectionMatrix;
 	projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0); //vertical field of view is important (1st parameter)! higher vfov will allow for better perephial vision
+	//Vertical Field of View = 2 * arctan( tan(hfox/2) * Aspect Ratio)
 	GLfloat glmatrixProjection[16];
 	projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
 	glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
+
+	glUniform3f(colorUniformLocation, 1.0, 0.0, 0.0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
 	glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -43,14 +48,19 @@ void display(void) {
 	glVertexAttribPointer(colorAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(colorAttribute);
 
+	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+	glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(normalAttribute);
+
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	glDisableVertexAttribArray(positionAttribute);
 	glDisableVertexAttribArray(colorAttribute);
+	glDisableVertexAttribArray(normalAttribute);
 
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(0.5, 0.5, 0.2, 1.0);
 
 	
 
@@ -72,10 +82,12 @@ void init() {
 	positionAttribute = glGetAttribLocation(program, "position");
 	colorAttribute = glGetAttribLocation(program, "color");
 	timeUniform = glGetUniformLocation(program, "time");
+	normalAttribute = glGetAttribLocation(program, "normal");
 
 	
 	modelviewMatrixUniformLocation = glGetUniformLocation(program, "modelViewMatrix");
 	projectionMatrixUniformLocation = glGetUniformLocation(program, "projectionMatrix");
+	colorUniformLocation = glGetUniformLocation(program, "uColor");
 
 	glGenBuffers(1, &vertPositionVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
@@ -119,7 +131,7 @@ void init() {
 		1.0f,-1.0f, 1.0f
 	};
 
-	glBufferData(GL_ARRAY_BUFFER, 108 * sizeof(GLfloat), cubeVerts, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerts), cubeVerts, GL_STATIC_DRAW);
 
 	glGenBuffers(1, &colorVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
@@ -163,8 +175,28 @@ void init() {
 		0.982f, 0.099f, 0.879f, 1.0f
 	};
 
-	glBufferData(GL_ARRAY_BUFFER, 144 * sizeof(GLfloat), cubeColors, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeColors), cubeColors, GL_STATIC_DRAW);
 
+
+	glGenBuffers(1, &normalVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+	GLfloat normalVerts[] = {
+		-1.0f, 0.0f, 0.0f, // Left Side
+		0.0f, 0.0f, -1.0f, // Back Side
+		0.0f,-1.0f, 0.0f, // Bottom Side
+		0.0f, 0.0f, -1.0f, // Back Side
+		-1.0f, 0.0f, 0.0f, // Left Side
+		0.0f, -1.0f, 0.0f, // Bottom Side
+		0.0f, 0.0f, 1.0f, // front Side
+		1.0f, 0.0f, 0.0f, // right Side
+		1.0f, 0.0f, 0.0f, // right Side
+		0.0f, 1.0f, 0.0f, // top Side
+		0.0f, 1.0f, 0.0f, // top Side
+		0.0f, 0.0f, 1.0f, // front Side
+
+	};
+
+	glBufferData(GL_ARRAY_BUFFER, sizeof(normalVerts), normalVerts, GL_STATIC_DRAW);
 	
 
 } 

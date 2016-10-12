@@ -27,6 +27,16 @@ struct Geometry {
 	int numIndices;
 	void Draw(GLuint positionAttribute, GLuint normalAttribute) {
 		// bind buffer objects and draw
+		glBindBuffer(GL_ARRAY_BUFFER, vertexBO);
+		glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(VertexPN), (void*)offsetof(VertexPN, p));
+		glEnableVertexAttribArray(positionAttribute);
+
+		glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(VertexPN), (void*)offsetof(VertexPN, n));
+		glEnableVertexAttribArray(normalAttribute);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBO);
+
+		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_SHORT, 0);
+
 	}
 };
 struct Entity {
@@ -35,8 +45,18 @@ struct Entity {
 	void Draw(Matrix4 &eyeInverse, GLuint positionAttribute, GLuint normalAttribute,
 		GLuint modelviewMatrixUniformLocation, GLuint normalMatrixUniformLocation) {
 		// create modelview matrix
+		Matrix4 modelViewMatrix = eyeInverse;
+		GLfloat glmatrix[16];
+		modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
+		glUniformMatrix4fv(modelviewMatrixUniformLocation, 1, false, glmatrix);// set the model view and normal matrices to the uniforms locations
 		// create normal matrix
-		// set the model view and normal matrices to the uniforms locations
+		Matrix4 normalMatrix;
+		normalMatrix = transpose(inv(modelViewMatrix));
+		GLfloat glmatrixNormal[16];
+		normalMatrix.writeToColumnMajorMatrix(glmatrixNormal);
+		glUniformMatrix4fv(normalUniformLocation, 1, false, glmatrixNormal);// set the model view and normal matrices to the uniforms locations
+		
+
 		geometry.Draw(positionAttribute, normalAttribute);
 	}
 };

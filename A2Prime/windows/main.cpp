@@ -115,6 +115,13 @@ void init() {
 	
 	
 
+	/*glGenBuffers(1, &vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPN) * vtx.size(), vtx.data(), GL_STATIC_DRAW);
+	glGenBuffers(1, &indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx.size(), idx.data(), GL_STATIC_DRAW);
+*/
 	glGenBuffers(1, &vertPositionVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
 

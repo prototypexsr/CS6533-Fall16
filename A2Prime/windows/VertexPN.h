@@ -14,7 +14,7 @@ struct VertexPN {
 };
 
 struct Transform {
-	Quat rotation;
+	Quat rotationX, rotationY, rotationZ;
 	Cvec3 scale;
 	Cvec3 position;
 	Transform() : scale(1.0f, 1.0f, 1.0f) {
@@ -43,8 +43,9 @@ struct Entity {
 	Transform transform;
 	Geometry geometry;
 	void Draw(Matrix4 &eyeInverse, GLuint positionAttribute, GLuint normalAttribute,
-		GLuint modelviewMatrixUniformLocation, GLuint normalMatrixUniformLocation) {
+		GLuint modelviewMatrixUniformLocation, GLuint normalMatrixUniformLocation, GLuint colorUniformLocation, float r, float g, float b) {
 		// create modelview matrix
+		glUniform3f(colorUniformLocation, r, g, b);
 		Matrix4 modelViewMatrix = eyeInverse;
 		GLfloat glmatrix[16];
 		modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
@@ -54,7 +55,7 @@ struct Entity {
 		normalMatrix = transpose(inv(modelViewMatrix));
 		GLfloat glmatrixNormal[16];
 		normalMatrix.writeToColumnMajorMatrix(glmatrixNormal);
-		glUniformMatrix4fv(normalUniformLocation, 1, false, glmatrixNormal);// set the model view and normal matrices to the uniforms locations
+		glUniformMatrix4fv(normalMatrixUniformLocation, 1, false, glmatrixNormal);// set the model view and normal matrices to the uniforms locations
 		
 
 		geometry.Draw(positionAttribute, normalAttribute);

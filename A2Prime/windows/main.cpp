@@ -16,6 +16,12 @@ GLuint projectionMatrixUniformLocation;
 GLuint colorUniformLocation, normalUniformLocation;
  
 float textureOffset = 0.0;
+Entity ball;
+int ibLen2, vbLen2;
+Entity cube;
+int ibLen, vbLen;
+Entity bigCube;
+int ibLen3, vbLen3;
 
  
 void display(void) {
@@ -23,6 +29,13 @@ void display(void) {
 	//glUniform1f(timeUniform, textureOffset);
 	int timeSinceStart = glutGet(GLUT_ELAPSED_TIME);
 	glUniform1f(timeUniform, (float)timeSinceStart / 1000.0f);
+	
+	
+	
+	
+
+	
+	
 
 	Matrix4 objectMatrix;
 	//objectMatrix = objectMatrix.makeXRotation(0.01 * timeSinceStart);
@@ -36,14 +49,15 @@ void display(void) {
 
 	Matrix4 modelViewMatrix = inv(eyeMatrix) * rotationMatrix; //keep eye matrix inverted at all times
 	
+	
 
 
 	//Matrix4 modelViewMatrix; 
 	//modelViewMatrix = normalMatrix;
-	GLfloat glmatrix[16];
-	modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
-	//normalMatrix.writeToColumnMajorMatrix(glmatrix);
-	glUniformMatrix4fv(modelviewMatrixUniformLocation, 1, false, glmatrix);
+	//GLfloat glmatrix[16];
+	//modelViewMatrix.writeToColumnMajorMatrix(glmatrix);
+	////normalMatrix.writeToColumnMajorMatrix(glmatrix);
+	//glUniformMatrix4fv(modelviewMatrixUniformLocation, 1, false, glmatrix);
 	//glUniformMatrix4fv(normalUniformLocation, 1, false, glmatrix);
 	Matrix4 projectionMatrix;
 	projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0); //vertical field of view is important (1st parameter)! higher vfov will allow for better perephial vision
@@ -52,13 +66,17 @@ void display(void) {
 	projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
 	glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
 
-	Matrix4 normalMatrix;
+	/*Matrix4 normalMatrix;
 	normalMatrix = transpose(inv(modelViewMatrix));
 	GLfloat glmatrixNormal[16];
 	normalMatrix.writeToColumnMajorMatrix(glmatrixNormal);
-	glUniformMatrix4fv(normalUniformLocation, 1, false, glmatrixNormal);
+	glUniformMatrix4fv(normalUniformLocation, 1, false, glmatrixNormal);*/
 
-	glUniform3f(colorUniformLocation, 0.0, 0.45, 1.0);
+	/*glUniform3f(colorUniformLocation, 0.0, 0.45, 1.0);*/
+	cube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.0, 0.45, 1.0);
+	ball.Draw(inv(modelViewMatrix), positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.45, 0.0);
+	bigCube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.0, 1.0);
+	
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
 	glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -72,7 +90,9 @@ void display(void) {
 	glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(normalAttribute);
 
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	
+
+	//glDrawArrays(GL_TRIANGLES, 0, 36);
 	glDisableVertexAttribArray(positionAttribute);
 	glDisableVertexAttribArray(colorAttribute);
 	glDisableVertexAttribArray(normalAttribute);
@@ -82,12 +102,8 @@ void display(void) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 
-	/*int ibLen, vbLen;
-	getCubeVbIbLen(vbLen, ibLen);
-	std::vector<VertexPN> vtx(vbLen);
-	std::vector<unsigned short> idx(ibLen);
-	makeCube(2, vtx.begin(), idx.begin());
-*/
+	
+
     glutSwapBuffers();
 }
 
@@ -112,8 +128,50 @@ void init() {
 	colorUniformLocation = glGetUniformLocation(program, "uColor");
 	modelviewMatrixUniformLocation = glGetUniformLocation(program, "modelViewMatrix");
 	projectionMatrixUniformLocation = glGetUniformLocation(program, "projectionMatrix");
-	
-	
+
+
+	/*Entity cube;
+	int ibLen, vbLen;
+	getCubeVbIbLen(vbLen, ibLen);
+	std::vector<VertexPN> vtx(vbLen);
+	std::vector<unsigned short> idx(ibLen);
+	makeCube(2, vtx.begin(), idx.begin());
+	cube.geometry.indexBO = ibLen;
+	cube.geometry.vertexBO = vbLen;
+	cube.geometry.numIndices = ibLen;*/
+	//cube.geometry.Draw(positionAttribute, normalAttribute);
+
+	//getCubeVbIbLen(vbLen2, ibLen2);
+	getCubeVbIbLen(vbLen, ibLen);
+	cube.geometry.indexBO = ibLen;
+	cube.geometry.vertexBO = vbLen;
+	cube.geometry.numIndices = ibLen;
+
+	std::vector<VertexPN> vtx(vbLen);
+	std::vector<unsigned short> idx(ibLen);
+
+	makeCube(1, vtx.begin(), idx.begin());
+
+
+	getSphereVbIbLen(16, 16, vbLen2, ibLen2);
+	ball.geometry.indexBO = ibLen2;
+	ball.geometry.vertexBO = vbLen2;
+	ball.geometry.numIndices = ibLen2;
+
+	std::vector<VertexPN> vtx2(vbLen2);
+	std::vector<unsigned short> idx2(ibLen2);
+
+	makeSphere(0.5, 16, 16, vtx2.begin(), idx2.begin());
+
+	getCubeVbIbLen(vbLen3, ibLen3);
+	bigCube.geometry.indexBO = ibLen3;
+	bigCube.geometry.vertexBO = vbLen3;
+	bigCube.geometry.numIndices = ibLen3;
+
+	std::vector<VertexPN> vtx3(vbLen3);
+	std::vector<unsigned short> idx3(ibLen3);
+
+	makeCube(2, vtx3.begin(), idx3.begin());
 
 	/*glGenBuffers(1, &vertexBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBO);
@@ -122,7 +180,7 @@ void init() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx.size(), idx.data(), GL_STATIC_DRAW);
 */
-	glGenBuffers(1, &vertPositionVBO);
+	/*glGenBuffers(1, &vertPositionVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
 
 	GLfloat cubeVerts[] = {
@@ -164,7 +222,28 @@ void init() {
 		1.0f,-1.0f, 1.0f
 	};
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerts), cubeVerts, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerts), cubeVerts, GL_STATIC_DRAW);*/
+	glGenBuffers(1, &ball.geometry.vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, ball.geometry.vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPN) * vtx2.size(), vtx2.data(), GL_STATIC_DRAW);
+	glGenBuffers(1, &ball.geometry.indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ball.geometry.indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx2.size(), idx2.data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &cube.geometry.vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, cube.geometry.vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPN) * vtx.size(), vtx.data(), GL_STATIC_DRAW);
+	glGenBuffers(1, &cube.geometry.indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.geometry.indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx.size(), idx.data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &bigCube.geometry.vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, bigCube.geometry.vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPN) * vtx3.size(), vtx3.data(), GL_STATIC_DRAW);
+	glGenBuffers(1, &bigCube.geometry.indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bigCube.geometry.indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx3.size(), idx3.data(), GL_STATIC_DRAW);
+
 
 	glGenBuffers(1, &colorVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
@@ -253,6 +332,7 @@ void init() {
 	};
 
 	glBufferData(GL_ARRAY_BUFFER, sizeof(normalVerts), normalVerts, GL_STATIC_DRAW);
+
 	
 
 } 

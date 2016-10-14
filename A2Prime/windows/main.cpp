@@ -42,14 +42,17 @@ void display(void) {
 	//objectMatrix = objectMatrix.makeYRotation(-0.02 * timeSinceStart );
 	Quat q1 = Quat::makeXRotation( 0.001* timeSinceStart *70.0f);
 	Quat q2 = Quat::makeZRotation(0.001 * timeSinceStart * 20.0f);
+	Quat q3 = q1;
+	Quat q4 = Quat::makeZRotation(-0.001 * timeSinceStart * 20.0f);
 	Quat combined = q1 * q2;
+	Quat combined2 = q3 * q4;
 	Matrix4 rotationMatrix = quatToMatrix(combined);
 	Matrix4 eyeMatrix;
 	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.0, 3.00)); //z-value will decide how "far" away the object is
 
 	Matrix4 modelViewMatrix = inv(eyeMatrix) * rotationMatrix; //keep eye matrix inverted at all times
 	
-	
+	Matrix4 modelViewMatrix2 = inv(eyeMatrix) * quatToMatrix(combined2);
 
 
 	//Matrix4 modelViewMatrix; 
@@ -75,7 +78,7 @@ void display(void) {
 	/*glUniform3f(colorUniformLocation, 0.0, 0.45, 1.0);*/
 	cube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.0, 0.45, 1.0);
 	ball.Draw(inv(modelViewMatrix), positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.45, 0.0);
-	bigCube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.0, 1.0);
+	bigCube.Draw(modelViewMatrix2, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.1, 0.2, 0.4);
 	
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
@@ -153,7 +156,7 @@ void init() {
 	makeCube(1, vtx.begin(), idx.begin());
 
 
-	getSphereVbIbLen(16, 16, vbLen2, ibLen2);
+	getSphereVbIbLen(20, 20, vbLen2, ibLen2);
 	ball.geometry.indexBO = ibLen2;
 	ball.geometry.vertexBO = vbLen2;
 	ball.geometry.numIndices = ibLen2;
@@ -161,7 +164,7 @@ void init() {
 	std::vector<VertexPN> vtx2(vbLen2);
 	std::vector<unsigned short> idx2(ibLen2);
 
-	makeSphere(0.5, 16, 16, vtx2.begin(), idx2.begin());
+	makeSphere(0.5, 20, 20, vtx2.begin(), idx2.begin());
 
 	getCubeVbIbLen(vbLen3, ibLen3);
 	bigCube.geometry.indexBO = ibLen3;
@@ -172,6 +175,9 @@ void init() {
 	std::vector<unsigned short> idx3(ibLen3);
 
 	makeCube(2, vtx3.begin(), idx3.begin());
+
+
+
 
 	/*glGenBuffers(1, &vertexBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBO);

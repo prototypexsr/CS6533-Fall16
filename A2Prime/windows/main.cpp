@@ -143,7 +143,8 @@ void init() {
 	cube.geometry.vertexBO = vbLen;
 	cube.geometry.numIndices = ibLen;*/
 	//cube.geometry.Draw(positionAttribute, normalAttribute);
-
+	cube.child = &bigCube;
+	bigCube.child = &ball;
 	//getCubeVbIbLen(vbLen2, ibLen2);
 	getCubeVbIbLen(vbLen, ibLen);
 	cube.geometry.indexBO = ibLen;

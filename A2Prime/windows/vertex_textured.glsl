@@ -8,6 +8,6 @@ uniform mat4 normalMatrix;
 varying vec4 varyingNormal;
 
 void main() {
-varyingNormal = normalMatrix * normal;
+varyingNormal = normalize(normalMatrix * normal);
 gl_Position = projectionMatrix * modelViewMatrix * position;
 }

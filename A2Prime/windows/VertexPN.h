@@ -42,6 +42,7 @@ struct Geometry {
 struct Entity {
 	Transform transform;
 	Geometry geometry;
+	Entity* child;
 	void Draw(Matrix4 &eyeInverse, GLuint positionAttribute, GLuint normalAttribute,
 		GLuint modelviewMatrixUniformLocation, GLuint normalMatrixUniformLocation, GLuint colorUniformLocation, float r, float g, float b) {
 		// create modelview matrix

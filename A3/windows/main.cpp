@@ -57,7 +57,8 @@ void display(void) {
 	//Quat combined2 = q3 * q4;
 	Matrix4 rotationMatrix = quatToMatrix(combined);
 	Matrix4 eyeMatrix;
-	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.0, 0.25)); //z-value will decide how "far" away the object is
+	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.05, 0.25)); //z-value will decide how "far" away the object is
+	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 1.05, 3.25)); //z-value will decide how "far" away the object is
 
 	Matrix4 modelViewMatrix = inv(eyeMatrix) * rotationMatrix; //keep eye matrix inverted at all times
 	
@@ -71,11 +72,17 @@ void display(void) {
 	GLfloat glmatrixProjection[16];
 	projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
 	glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
+	ball.r = 1.0;
+	cube.g = 1.0;
+	bigCube.b = 1.0;
 
 	//For now, all three entites will share everything, except for color attribute
-	//cube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.0, 0.45, 1.0);
+	//cube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.0, 0.0, 0.0);
+	//bigCube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.0, 1.0);
 	//ball.Draw(modelViewMatrix , positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.45, 0.0);
-	object.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	//object.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	ball.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, ball.r, ball.g, ball.b);
+
 	
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
@@ -143,7 +150,7 @@ void loadObjFile(const std::string &fileName, std::vector<VertexPN> &outVertices
 
 void init() {
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+	glCullFace(GL_BACK); //GL_BACK will enable that nice lighting effect, but you may be able to see through your object
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glReadBuffer(GL_BACK);

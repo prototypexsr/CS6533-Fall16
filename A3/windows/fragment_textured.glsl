@@ -14,14 +14,14 @@ return 1.0 / (1.0 + a*dist + b*dist*dist);
 }
 
 void main() {
-vec3 diffuseColor = vec3(0.0, 1.0, 0.0);
-vec3 specularColor = vec3(0.3, 0.0, 0.0);
+vec3 diffuseColor = vec3(0.25, 0.0, 0.0);
+vec3 specularColor = vec3(0.0, 0.1, 0.0);
 
-lights[0].lightPosition = vec3(0.0, -1.0, 0.0);
+lights[0].lightPosition = vec3(0.0, -1.0, -1.0);
 lights[1].lightPosition = vec3(1.0, 1.0, 0.0);
 
 lights[0].lightColor = vec3(0.5, 0.0, 0.0);
-lights[1].lightColor = vec3(0.0, 0.0, 0.0);
+lights[1].lightColor = vec3(0.0, 0.5, 0.0);
 
 lights[0].specularLightColor = vec3(1.0, 1.0, 0.0);
 lights[1].specularLightColor = vec3(0.0, 1.0, 1.0);

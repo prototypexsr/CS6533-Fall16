@@ -85,12 +85,11 @@
     <ClInclude Include="glsupport.h" />
     <ClInclude Include="matrix4.h" />
     <ClInclude Include="stb_image.h" />
-    <ClInclude Include="VertexPN.h" />
+    <ClInclude Include="VertexPrime.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glsupport.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="VertexPN.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="fragment_textured.glsl" />

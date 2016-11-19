@@ -9,6 +9,7 @@ sphere is inside a cube, which is inside a larger cube
 #include "geometrymaker.h"
 #include "VertexPrime.h"
 #include "tiny_obj_loader.h"
+#include "stb_image.h"
 #include <GL\freeglut.h>
 
 
@@ -19,10 +20,11 @@ GLuint texture;
 GLuint positionUniform, timeUniform, lightDirectionUniform;
 GLuint modelviewMatrixUniformLocation;
 GLuint projectionMatrixUniformLocation;
-GLuint colorUniformLocation, normalUniformLocation, lightDirectionUniformLocation0, lightDirectionUniformLocation1;
-GLuint diffuseTexture, specularTexture, diffuseTexture2;
-GLuint diffuseTextureUniformLocation;
+GLuint colorUniformLocation, normalUniformLocation, lightDirectionUniformLocation0, lightDirectionUniformLocation1, normalTexUniformLocation;
+GLuint diffuseTexture, specularTexture, diffuseTexture2, normalTexture;
+GLuint diffuseTextureUniformLocation, diffuseTextureUniformLocation1;
 GLuint specularUniformLocation;
+GLuint cubeMap;
  
 float textureOffset = 0.0;
 Entity ball;
@@ -31,7 +33,7 @@ Entity cube;
 int ibLen, vbLen;
 Entity bigCube;
 int ibLen3, vbLen3;
-Entity object;
+Entity object, object2;
 Entity areaFloor;
 int ibLen4, vbLen4;
 
@@ -64,9 +66,9 @@ void display(void) {
 	//Quat combined2 = q3 * q4;
 	Matrix4 rotationMatrix = quatToMatrix(combined);
 	Matrix4 eyeMatrix;
-	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.05, 0.25)); //z-value will decide how "far" away the object is
+	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.05, 0.25)); //z-value will decide how "far" away the object is
 	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 1.05, 3.25)); //z-value will decide how "far" away the object is
-	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 4.05, 10.25)); //z-value will decide how "far" away the object is
+	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 6.05, 10.25)); //z-value will decide how "far" away the object is
 
 	Matrix4 modelViewMatrix = inv(eyeMatrix) * rotationMatrix; //keep eye matrix inverted at all times
 	
@@ -75,12 +77,29 @@ void display(void) {
 
 
 	//Should move matrix stuff inside Entity class
-	Matrix4 projectionMatrix;
-	projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0); //vertical field of view is important (1st parameter)! higher vfov will allow for better perephial vision
-	//Vertical Field of View = 2 * arctan( tan(hfox/2) * Aspect Ratio)
-	GLfloat glmatrixProjection[16];
-	projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
-	glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
+	//Matrix4 projectionMatrix;
+	//projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0); //vertical field of view is important (1st parameter)! higher vfov will allow for better perephial vision
+	////Vertical Field of View = 2 * arctan( tan(hfox/2) * Aspect Ratio)
+	//GLfloat glmatrixProjection[16];
+	//projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
+	//glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
+	//object.transform.rotateYwithTime(timeUniform);
+	object.transform.setEyeTranslation(8.0, 6.05, 10.25);
+	object.transform.createProjectionMatrix(projectionMatrixUniformLocation);
+	object.transform.setModelviewMatrix();
+	object.transform.rotateYwithTime(timeUniform);
+
+	object2.transform.setEyeTranslation(-8.0, 6.05, 10.25);
+	object2.transform.createProjectionMatrix(projectionMatrixUniformLocation);
+	object2.transform.setModelviewMatrix();
+	object2.transform.rotateYwithTime(timeUniform);
+	
+	/*areaFloor.transform.setEyeTranslation(0.0, 7.05, 10.25);
+	areaFloor.transform.createProjectionMatrix(projectionMatrixUniformLocation);
+	areaFloor.transform.setModelviewMatrix();
+	areaFloor.transform.rotateYwithTime(timeUniform);*/
+	//areaFloor.transform.createProjectionMatrix(projectionMatrixUniformLocation);
+	
 	ball.r = 1.0;
 	cube.g = 1.0;
 	bigCube.b = 1.0;
@@ -89,8 +108,9 @@ void display(void) {
 	//cube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.0, 0.0, 0.0);
 	//bigCube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.0, 1.0);
 	//ball.Draw(modelViewMatrix , positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.45, 0.0);
-	object.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
-	areaFloor.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, ball.r, ball.g, ball.b);
+	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	//areaFloor.Draw(areaFloor.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, ball.r, ball.g, ball.b);
+	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
 
 	
 
@@ -119,24 +139,17 @@ void display(void) {
 	glDisableVertexAttribArray(colorAttribute);
 	glDisableVertexAttribArray(normalAttribute);
 
-	glUniform1i(diffuseTextureUniformLocation, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, object.texture);
-
-
-	glUniform1i(specularUniformLocation, 1);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, specularTexture);
+	
 
 	//glUniform1i(diffuseTextureUniformLocation, 2);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, areaFloor.texture);
+	//glActiveTexture(GL_TEXTURE2);
+	//glBindTexture(GL_TEXTURE_2D, areaFloor.texture);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
 
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(0.1, 0.1, 0.1, 1.0);
 
 	
 
@@ -202,6 +215,14 @@ void loadObjFile(const std::string &fileName, std::vector<VertexPrime> &outVerti
 			outVertices[i + 1].b = binormal;
 			outVertices[i + 2].b = binormal;
 		}
+		/*std::vector<std::string> cubemapFiles;
+		cubemapFiles.push_back("alps_ft.tga");
+		cubemapFiles.push_back("alps_bk.tga");
+		cubemapFiles.push_back("alps_up.tga");
+		cubemapFiles.push_back("alps_dn.tga");
+		cubemapFiles.push_back("alps_rt.tga");
+		cubemapFiles.push_back("alps_lf.tga");
+		cubeMap = loadGLCubemap(cubemapFiles);*/
 		
 	}
 	else {
@@ -209,7 +230,30 @@ void loadObjFile(const std::string &fileName, std::vector<VertexPrime> &outVerti
 		assert(false);
 	}
 }
-
+GLuint loadGLCubemap(std::vector<std::string> faces) {
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+	for (GLuint i = 0; i < faces.size(); i++) {
+		int w, h, comp;
+		unsigned char* image = stbi_load(faces[i].c_str(), &w, &h, &comp, STBI_rgb_alpha);
+		if (image) {
+			glTexImage2D(
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
+				GL_RGB, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image
+			);
+			stbi_image_free(image);
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	return textureID;
+}
 void init() {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK); //GL_BACK will enable that nice lighting effect, but you may be able to see through your object
@@ -219,6 +263,7 @@ void init() {
 	glClearDepth(0.0f);
 	//glEnable(GL_LIGHTING);
 	//glEnable(GL_LIGHT0);
+	//glEnable(GL_LIGHT1);
 
 	program = glCreateProgram();
 	readAndCompileShader(program, "vertex_textured.glsl", "fragment_textured.glsl");
@@ -238,7 +283,9 @@ void init() {
 	modelviewMatrixUniformLocation = glGetUniformLocation(program, "modelViewMatrix");
 	projectionMatrixUniformLocation = glGetUniformLocation(program, "projectionMatrix");
 	diffuseTextureUniformLocation = glGetUniformLocation(program, "diffuseTexture");
+	//diffuseTextureUniformLocation1 = glGetUniformLocation(program, "diffuseTexture[1]");
 	specularUniformLocation = glGetUniformLocation(program, "specularTexture");
+	normalTexUniformLocation = glGetUniformLocation(program, "normalTexture");
 
 	lightDirectionUniformLocation0 = glGetUniformLocation(program, "lights[0].lightDirection");
 	lightDirectionUniformLocation1 = glGetUniformLocation(program, "lights[1].lightDirection");
@@ -249,31 +296,31 @@ void init() {
 	
 	//cube.adoption(&bigCube);
 	//bigCube.adoption(&ball);
-	bigCube.adoption(&cube);
-	cube.adoption(&ball);
-	
-	getCubeVbIbLen(vbLen, ibLen);
-	cube.geometry.indexBO = ibLen;
-	cube.geometry.vertexBO = vbLen;
-	cube.geometry.numIndices = ibLen;
+	//bigCube.adoption(&cube);
+	//cube.adoption(&ball);
+	//
+	//getCubeVbIbLen(vbLen, ibLen);
+	//cube.geometry.indexBO = ibLen;
+	//cube.geometry.vertexBO = vbLen;
+	//cube.geometry.numIndices = ibLen;
 
-	std::vector<VertexPrime> vtx(vbLen);
-	std::vector<unsigned short> idx(ibLen);
+	//std::vector<VertexPrime> vtx(vbLen);
+	//std::vector<unsigned short> idx(ibLen);
 
-	makeCube(1, vtx.begin(), idx.begin());
+	//makeCube(1, vtx.begin(), idx.begin());
 
 
-	getSphereVbIbLen(20, 20, vbLen2, ibLen2); //more slices & stacks make it more smooth and circle like
-	ball.geometry.indexBO = ibLen2;
-	ball.geometry.vertexBO = vbLen2;
-	ball.geometry.numIndices = ibLen2;
+	//getSphereVbIbLen(20, 20, vbLen2, ibLen2); //more slices & stacks make it more smooth and circle like
+	//ball.geometry.indexBO = ibLen2;
+	//ball.geometry.vertexBO = vbLen2;
+	//ball.geometry.numIndices = ibLen2;
 
-	std::vector<VertexPrime> vtx2(vbLen2);
-	std::vector<unsigned short> idx2(ibLen2);
+	//std::vector<VertexPrime> vtx2(vbLen2);
+	//std::vector<unsigned short> idx2(ibLen2);
 
-	makeSphere(0.5, 20, 20, vtx2.begin(), idx2.begin());
+	//makeSphere(0.5, 20, 20, vtx2.begin(), idx2.begin());
 
-	getCubeVbIbLen(vbLen3, ibLen3);
+	/*getCubeVbIbLen(vbLen3, ibLen3);
 	bigCube.geometry.indexBO = ibLen3;
 	bigCube.geometry.vertexBO = vbLen3;
 	bigCube.geometry.numIndices = ibLen3;
@@ -283,7 +330,93 @@ void init() {
 
 	makeCube(2, vtx3.begin(), idx3.begin());
 
-	getPlaneVbIbLen(vbLen4, ibLen4);
+	glGenBuffers(1, &bigCube.geometry.vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, bigCube.geometry.vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * vtx3.size(), vtx3.data(), GL_STATIC_DRAW);
+	glGenBuffers(1, &bigCube.geometry.indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bigCube.geometry.indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx3.size(), idx3.data(), GL_STATIC_DRAW);*/
+
+	
+
+	//areaFloor.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
+	
+	//std::vector<VertexPrime> meshVertices;
+	/*std::vector<VertexPrime> meshVertices;
+	std::vector<unsigned short> meshIndices;*/
+	loadObjFile("Monk_Giveaway_Fixed.obj", object.meshVertices, object.meshIndices);
+	object.geometry.numIndices = object.meshIndices.size();
+	object.geometry.vertexBO = object.meshVertices.size();
+	object.geometry.indexBO = object.meshIndices.size();
+
+	glGenBuffers(1, &object.geometry.vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, object.geometry.vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * object.meshVertices.size(), object.meshVertices.data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &object.geometry.indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object.geometry.indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * object.meshIndices.size(), object.meshIndices.data(), GL_STATIC_DRAW);
+
+
+	object.diffuseTexture = loadGLTexture("Monk_D.tga");
+	object.specularTexture = loadGLTexture("Monk_S.tga");
+	object.normalTexture = loadGLTexture("Monk_N.tga");
+	
+	glUniform1i(diffuseTextureUniformLocation, 0);
+	glActiveTexture(GL_TEXTURE0);
+	//glGenTextures(0, &object.diffuseTexture);
+	glBindTexture(GL_TEXTURE_2D, object.diffuseTexture);
+
+	glUniform1i(specularUniformLocation, 1);
+	glActiveTexture(GL_TEXTURE1);
+	//glGenTextures(1, &object.specularTexture);
+	glBindTexture(GL_TEXTURE_2D, object.specularTexture);
+
+	glUniform1i(normalTexUniformLocation, 2);
+	glActiveTexture(GL_TEXTURE2);
+	//glGenTextures(2, &object.normalTexture);
+	glBindTexture(GL_TEXTURE_2D, object.normalTexture);
+
+	//object.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
+
+	loadObjFile("Monk_Giveaway_Fixed.obj", object2.meshVertices, object2.meshIndices);
+	object2.geometry.numIndices = object2.meshIndices.size();
+	object2.geometry.vertexBO = object2.meshVertices.size();
+	object2.geometry.indexBO = object2.meshIndices.size();
+
+	glGenBuffers(1, &object2.geometry.vertexBO);
+	glBindBuffer(GL_ARRAY_BUFFER, object2.geometry.vertexBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * object2.meshVertices.size(), object2.meshVertices.data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &object2.geometry.indexBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object2.geometry.indexBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * object2.meshIndices.size(), object2.meshIndices.data(), GL_STATIC_DRAW);
+
+
+	object2.diffuseTexture = loadGLTexture("Monk_D.tga");
+	object2.specularTexture = loadGLTexture("Monk_S.tga");
+	object2.normalTexture = loadGLTexture("Monk_N.tga");
+
+	glUniform1i(diffuseTextureUniformLocation, 0);
+	glActiveTexture(GL_TEXTURE0);
+	//glGenTextures(0, &object.diffuseTexture);
+	glBindTexture(GL_TEXTURE_2D, object2.diffuseTexture);
+
+	glUniform1i(specularUniformLocation, 1);
+	glActiveTexture(GL_TEXTURE1);
+	//glGenTextures(1, &object.specularTexture);
+	glBindTexture(GL_TEXTURE_2D, object2.specularTexture);
+
+	glUniform1i(normalTexUniformLocation, 2);
+	glActiveTexture(GL_TEXTURE2);
+	//glGenTextures(2, &object.normalTexture);
+	glBindTexture(GL_TEXTURE_2D, object2.normalTexture);
+
+	//object2.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
+
+	
+	
+	/*getPlaneVbIbLen(vbLen4, ibLen4);
 	areaFloor.geometry.indexBO = ibLen4;
 	areaFloor.geometry.vertexBO = vbLen4;
 	areaFloor.geometry.numIndices = ibLen4;
@@ -293,26 +426,6 @@ void init() {
 
 	makePlane(6, vtx4.begin(), idx4.begin());
 
-	glGenBuffers(1, &ball.geometry.vertexBO);
-	glBindBuffer(GL_ARRAY_BUFFER, ball.geometry.vertexBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * vtx2.size(), vtx2.data(), GL_STATIC_DRAW);
-	glGenBuffers(1, &ball.geometry.indexBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ball.geometry.indexBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx2.size(), idx2.data(), GL_STATIC_DRAW);
-
-	glGenBuffers(1, &cube.geometry.vertexBO);
-	glBindBuffer(GL_ARRAY_BUFFER, cube.geometry.vertexBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * vtx.size(), vtx.data(), GL_STATIC_DRAW);
-	glGenBuffers(1, &cube.geometry.indexBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.geometry.indexBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx.size(), idx.data(), GL_STATIC_DRAW);
-
-	glGenBuffers(1, &bigCube.geometry.vertexBO);
-	glBindBuffer(GL_ARRAY_BUFFER, bigCube.geometry.vertexBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * vtx3.size(), vtx3.data(), GL_STATIC_DRAW);
-	glGenBuffers(1, &bigCube.geometry.indexBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bigCube.geometry.indexBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx3.size(), idx3.data(), GL_STATIC_DRAW);
 
 	glGenBuffers(1, &areaFloor.geometry.vertexBO);
 	glBindBuffer(GL_ARRAY_BUFFER, areaFloor.geometry.vertexBO);
@@ -320,33 +433,89 @@ void init() {
 	glGenBuffers(1, &areaFloor.geometry.indexBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, areaFloor.geometry.indexBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx4.size(), idx4.data(), GL_STATIC_DRAW);
+*/
+	/*areaFloor.diffuseTexture = loadGLTexture("ghost.png");
+	areaFloor.specularTexture = loadGLTexture("ghost.png");
+	areaFloor.normalTexture = loadGLTexture("ghost.png");*/
+
+	//glUniform1i(diffuseTextureUniformLocation, 0);
+	//glActiveTexture(GL_TEXTURE0);
+	////glGenTextures(0, &diffuseTexture);
+	//glBindTexture(GL_TEXTURE_2D, areaFloor.diffuseTexture);
+
+	//glUniform1i(specularUniformLocation, 1);
+	//glActiveTexture(GL_TEXTURE1);
+	////glGenTextures(1, &specularTexture);
+	//glBindTexture(GL_TEXTURE_2D, areaFloor.specularTexture);
+
+	//glUniform1i(normalTexUniformLocation, 5);
+	//glActiveTexture(GL_TEXTURE5);
+	////glGenTextures(2, &normalTexture);
+	//glBindTexture(GL_TEXTURE_2D, areaFloor.normalTexture);
+	//std::vector<VertexPrime> meshVertices2;
+	//std::vector<unsigned short> meshIndices2;
+	//loadObjFile("Monk_Giveaway.obj", object2.meshVertices, object2.meshIndices);
+	//object2.geometry.numIndices = object2.meshIndices.size();
+	//object2.geometry.vertexBO = object2.meshVertices.size();
+	//object2.geometry.indexBO = object2.meshIndices.size();
+
+	//glGenBuffers(1, &object2.geometry.vertexBO);
+	//glBindBuffer(GL_ARRAY_BUFFER, object2.geometry.vertexBO);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * object2.meshVertices.size(), object2.meshVertices.data(), GL_STATIC_DRAW);
+
+	//glGenBuffers(1, &object2.geometry.indexBO);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object2.geometry.indexBO);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * object2.meshIndices.size(), object2.meshIndices.data(), GL_STATIC_DRAW);
 
 
+	//object2.diffuseTexture = loadGLTexture("Monk_D.tga");
+	//object2.specularTexture = loadGLTexture("Monk_S.tga");
+	//object2.normalTexture = loadGLTexture("Monk_N.tga");
 
+	//glUniform1i(diffuseTextureUniformLocation, 0);
+	//glActiveTexture(GL_TEXTURE0);
+	//////glGenTextures(0, &diffuseTexture);
+	//glBindTexture(GL_TEXTURE_2D, object2.diffuseTexture);
+
+	//glUniform1i(specularUniformLocation, 1);
+	//glActiveTexture(GL_TEXTURE1);
+	//////glGenTextures(1, &specularTexture);
+	//glBindTexture(GL_TEXTURE_2D, object2.specularTexture);
+
+	//glUniform1i(normalTexUniformLocation, 2);
+	//glActiveTexture(GL_TEXTURE2);
+	//////glGenTextures(2, &normalTexture);
+	//glBindTexture(GL_TEXTURE_2D, object2.normalTexture);
+
+	//object2.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
 
 	
-	
-	//std::vector<VertexPrime> meshVertices;
-	std::vector<VertexPrime> meshVertices;
-	std::vector<unsigned short> meshIndices;
-	loadObjFile("Monk_Giveaway_Fixed.obj", meshVertices, meshIndices);
-	object.geometry.numIndices = meshIndices.size();
-	object.geometry.vertexBO = meshVertices.size();
-	object.geometry.indexBO = meshIndices.size();
+	//areaFloor.specularTexture = areaFloor.diffuseTexture;
+	//areaFloor.normalTexture = areaFloor.diffuseTexture;
 
-	glGenBuffers(1, &object.geometry.vertexBO);
-	glBindBuffer(GL_ARRAY_BUFFER, object.geometry.vertexBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * meshVertices.size(), meshVertices.data(), GL_STATIC_DRAW);
-
-	glGenBuffers(1, &object.geometry.indexBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object.geometry.indexBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * meshIndices.size(), meshIndices.data(), GL_STATIC_DRAW);
+	//areaFloor.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
 
 
-	object.texture = loadGLTexture("Monk_D.tga");
-	areaFloor.texture = loadGLTexture("ghost.png");
+	/*glUniform1i(diffuseTextureUniformLocation, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, diffuseTexture);*/
 
-	glEnableVertexAttribArray(texCoordAttribute);
+	/*glUniform1i(diffuseTextureUniformLocation1, 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, areaFloor.texture);*/
+
+	//object.binding(diffuseTextureUniformLocation);
+	//areaFloor.binding(diffuseTextureUniformLocation);
+	/*glUniform1i(specularUniformLocation, 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, specularTexture);
+
+	glUniform1i(normalTexUniformLocation, 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, normalTexture);*/
+
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+	//glEnableVertexAttribArray(texCoordAttribute);
 	glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(VertexPrime), (void*)offsetof(VertexPrime, t));
 	glEnableVertexAttribArray(texCoordAttribute);
 

@@ -24,8 +24,25 @@ struct Transform {
 	Matrix4 eyeMatrix, objectMatrix, modelviewMatrix, projectionMatrix, normalMatrix, rotationMatrix;
 	Transform() : scale(1.0f, 1.0f, 1.0f) {
 	}
-	Matrix4 createMatrix() {
-		
+	void createProjectionMatrix(GLuint projectionMatUniformLoc) {
+		projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0);
+		GLfloat glmatrixProjection[16];
+		projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
+		glUniformMatrix4fv(projectionMatUniformLoc, 1, false, glmatrixProjection);
+	}
+
+	void setEyeTranslation(double x, double y, double z) {
+		eyeMatrix = eyeMatrix.makeTranslation(Cvec3(x, y, z));
+	}
+	void setModelviewMatrix() {
+		rotationMatrix = quatToMatrix(rotationY);
+		modelviewMatrix = inv(eyeMatrix) * rotationMatrix;
+	}
+
+	void rotateYwithTime(GLuint timeUniform) {
+		int timeSinceStart = glutGet(GLUT_ELAPSED_TIME);
+		glUniform1f(timeUniform, (float)timeSinceStart / 1000.0f);
+		rotationY = Quat::makeYRotation(0.001 * timeSinceStart * 20.0f);
 	}
 };
 struct Geometry {
@@ -59,7 +76,28 @@ struct Entity {
 	Entity* child;
 	Entity* parent;
 	float r, g, b;
-	GLuint texture;
+	int vblen, iblen;
+	GLuint diffuseTexture, specularTexture, normalTexture;
+
+	std::vector<VertexPrime> meshVertices;
+	std::vector<unsigned short> meshIndices;
+
+	void binding(GLuint diffuseTexUniformLoc, GLuint specularUniformLoc, GLuint normalTexUniformLoc) {
+		glUniform1i(diffuseTexUniformLoc, 0);
+		glActiveTexture(GL_TEXTURE0);
+		//glGenTextures(0, &diffuseTexture);
+		glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+
+		glUniform1i(specularUniformLoc, 1);
+		glActiveTexture(GL_TEXTURE1);
+		//glGenTextures(1, &specularTexture);
+		glBindTexture(GL_TEXTURE_2D, specularTexture);
+
+		glUniform1i(normalTexUniformLoc, 2);
+		glActiveTexture(GL_TEXTURE2);
+		//glGenTextures(2, &normalTexture);
+		glBindTexture(GL_TEXTURE_2D, normalTexture);
+	}
 
 	//if (parent != nullptr) 
 	void adoption(Entity* theChild) {

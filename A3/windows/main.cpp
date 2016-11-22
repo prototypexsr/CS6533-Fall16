@@ -1,6 +1,13 @@
-/*Stefan Cherubin HW2
-Primitives used: 2 cubes, 1 sphere
-sphere is inside a cube, which is inside a larger cube
+/*Stefan Cherubin HW3
+Seeing Double? It's because there are two monks!
+The left monk has a blue light with green specular light
+The right monk has a green light with red specular light (It may be difficult to see the red specular light, 
+it's easiet to see it on the monk's back)
+
+Both models have a specular and normal texture applied to them.
+
+Other things to note: Matrix related functions such as eyeMatrix translation are moved into Transform struct.
+
 */
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "glsupport.h" //include this file first
@@ -37,7 +44,6 @@ Entity object, object2;
 Entity areaFloor;
 int ibLen4, vbLen4;
 
-//std::vector<unsigned short> cubeVertices;
 
 
 
@@ -49,41 +55,9 @@ void display(void) {
 	glUniform1f(timeUniform, (float)timeSinceStart / 1000.0f);
 	
 	
-	
-	
+	//Matrix related functions moved inside transform struct
 
 	
-	
-
-	Matrix4 objectMatrix;
-	//objectMatrix = objectMatrix.makeXRotation(0.01 * timeSinceStart);
-	//objectMatrix = objectMatrix.makeYRotation(-0.02 * timeSinceStart );
-	//Quat q1 = Quat::makeXRotation( 0.001* timeSinceStart *70.0f);
-	Quat q2 = Quat::makeYRotation(0.001 * timeSinceStart * 20.0f);
-	//Quat q3 = q1;
-	Quat q4 = Quat::makeZRotation(-0.001 * timeSinceStart * 20.0f);
-	Quat combined = q2;
-	//Quat combined2 = q3 * q4;
-	Matrix4 rotationMatrix = quatToMatrix(combined);
-	Matrix4 eyeMatrix;
-	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 0.05, 0.25)); //z-value will decide how "far" away the object is
-	//eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 1.05, 3.25)); //z-value will decide how "far" away the object is
-	eyeMatrix = eyeMatrix.makeTranslation(Cvec3(0.00, 6.05, 10.25)); //z-value will decide how "far" away the object is
-
-	Matrix4 modelViewMatrix = inv(eyeMatrix) * rotationMatrix; //keep eye matrix inverted at all times
-	
-	//Matrix4 modelViewMatrix = inv(eyeMatrix) * rotationMatrix;
-	Matrix4 modelViewMatrix2 = inv(eyeMatrix) * quatToMatrix(combined);
-
-
-	//Should move matrix stuff inside Entity class
-	//Matrix4 projectionMatrix;
-	//projectionMatrix = projectionMatrix.makeProjection(90.0, 1.0, -0.1, -100.0); //vertical field of view is important (1st parameter)! higher vfov will allow for better perephial vision
-	////Vertical Field of View = 2 * arctan( tan(hfox/2) * Aspect Ratio)
-	//GLfloat glmatrixProjection[16];
-	//projectionMatrix.writeToColumnMajorMatrix(glmatrixProjection);
-	//glUniformMatrix4fv(projectionMatrixUniformLocation, 1, false, glmatrixProjection);
-	//object.transform.rotateYwithTime(timeUniform);
 	object.transform.setEyeTranslation(8.0, 6.05, 10.25);
 	object.transform.createProjectionMatrix(projectionMatrixUniformLocation);
 	object.transform.setModelviewMatrix();
@@ -94,22 +68,13 @@ void display(void) {
 	object2.transform.setModelviewMatrix();
 	object2.transform.rotateYwithTime(timeUniform);
 	
-	/*areaFloor.transform.setEyeTranslation(0.0, 7.05, 10.25);
-	areaFloor.transform.createProjectionMatrix(projectionMatrixUniformLocation);
-	areaFloor.transform.setModelviewMatrix();
-	areaFloor.transform.rotateYwithTime(timeUniform);*/
-	//areaFloor.transform.createProjectionMatrix(projectionMatrixUniformLocation);
-	
 	ball.r = 1.0;
 	cube.g = 1.0;
 	bigCube.b = 1.0;
 
 	//For now, all three entites will share everything, except for color attribute
-	//cube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 0.0, 0.0, 0.0);
-	//bigCube.Draw(modelViewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.0, 1.0);
-	//ball.Draw(modelViewMatrix , positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.45, 0.0);
+	
 	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
-	//areaFloor.Draw(areaFloor.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, ball.r, ball.g, ball.b);
 	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
 
 	
@@ -141,13 +106,11 @@ void display(void) {
 
 	
 
-	//glUniform1i(diffuseTextureUniformLocation, 2);
-	//glActiveTexture(GL_TEXTURE2);
-	//glBindTexture(GL_TEXTURE_2D, areaFloor.texture);
+
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+	
 
 	glClearColor(0.1, 0.1, 0.1, 1.0);
 
@@ -230,30 +193,31 @@ void loadObjFile(const std::string &fileName, std::vector<VertexPrime> &outVerti
 		assert(false);
 	}
 }
-GLuint loadGLCubemap(std::vector<std::string> faces) {
-	GLuint textureID;
-	glGenTextures(1, &textureID);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-	for (GLuint i = 0; i < faces.size(); i++) {
-		int w, h, comp;
-		unsigned char* image = stbi_load(faces[i].c_str(), &w, &h, &comp, STBI_rgb_alpha);
-		if (image) {
-			glTexImage2D(
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
-				GL_RGB, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image
-			);
-			stbi_image_free(image);
-		}
-	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-	return textureID;
-}
+//Will try out refraction at a later time
+//GLuint loadGLCubemap(std::vector<std::string> faces) {
+//	GLuint textureID;
+//	glGenTextures(1, &textureID);
+//	glActiveTexture(GL_TEXTURE0);
+//	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+//	for (GLuint i = 0; i < faces.size(); i++) {
+//		int w, h, comp;
+//		unsigned char* image = stbi_load(faces[i].c_str(), &w, &h, &comp, STBI_rgb_alpha);
+//		if (image) {
+//			glTexImage2D(
+//				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
+//				GL_RGB, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image
+//			);
+//			stbi_image_free(image);
+//		}
+//	}
+//	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+//	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+//	return textureID;
+//}
 void init() {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK); //GL_BACK will enable that nice lighting effect, but you may be able to see through your object
@@ -292,58 +256,6 @@ void init() {
 	//lightDirectionUniformLocation1
 	//lightDirectionUniform = glGetUniformLocation(program, "lightDirection");
 
-
-	
-	//cube.adoption(&bigCube);
-	//bigCube.adoption(&ball);
-	//bigCube.adoption(&cube);
-	//cube.adoption(&ball);
-	//
-	//getCubeVbIbLen(vbLen, ibLen);
-	//cube.geometry.indexBO = ibLen;
-	//cube.geometry.vertexBO = vbLen;
-	//cube.geometry.numIndices = ibLen;
-
-	//std::vector<VertexPrime> vtx(vbLen);
-	//std::vector<unsigned short> idx(ibLen);
-
-	//makeCube(1, vtx.begin(), idx.begin());
-
-
-	//getSphereVbIbLen(20, 20, vbLen2, ibLen2); //more slices & stacks make it more smooth and circle like
-	//ball.geometry.indexBO = ibLen2;
-	//ball.geometry.vertexBO = vbLen2;
-	//ball.geometry.numIndices = ibLen2;
-
-	//std::vector<VertexPrime> vtx2(vbLen2);
-	//std::vector<unsigned short> idx2(ibLen2);
-
-	//makeSphere(0.5, 20, 20, vtx2.begin(), idx2.begin());
-
-	/*getCubeVbIbLen(vbLen3, ibLen3);
-	bigCube.geometry.indexBO = ibLen3;
-	bigCube.geometry.vertexBO = vbLen3;
-	bigCube.geometry.numIndices = ibLen3;
-
-	std::vector<VertexPrime> vtx3(vbLen3);
-	std::vector<unsigned short> idx3(ibLen3);
-
-	makeCube(2, vtx3.begin(), idx3.begin());
-
-	glGenBuffers(1, &bigCube.geometry.vertexBO);
-	glBindBuffer(GL_ARRAY_BUFFER, bigCube.geometry.vertexBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * vtx3.size(), vtx3.data(), GL_STATIC_DRAW);
-	glGenBuffers(1, &bigCube.geometry.indexBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bigCube.geometry.indexBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx3.size(), idx3.data(), GL_STATIC_DRAW);*/
-
-	
-
-	//areaFloor.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
-	
-	//std::vector<VertexPrime> meshVertices;
-	/*std::vector<VertexPrime> meshVertices;
-	std::vector<unsigned short> meshIndices;*/
 	loadObjFile("Monk_Giveaway_Fixed.obj", object.meshVertices, object.meshIndices);
 	object.geometry.numIndices = object.meshIndices.size();
 	object.geometry.vertexBO = object.meshVertices.size();
@@ -364,20 +276,16 @@ void init() {
 	
 	glUniform1i(diffuseTextureUniformLocation, 0);
 	glActiveTexture(GL_TEXTURE0);
-	//glGenTextures(0, &object.diffuseTexture);
 	glBindTexture(GL_TEXTURE_2D, object.diffuseTexture);
 
 	glUniform1i(specularUniformLocation, 1);
 	glActiveTexture(GL_TEXTURE1);
-	//glGenTextures(1, &object.specularTexture);
 	glBindTexture(GL_TEXTURE_2D, object.specularTexture);
 
 	glUniform1i(normalTexUniformLocation, 2);
 	glActiveTexture(GL_TEXTURE2);
-	//glGenTextures(2, &object.normalTexture);
 	glBindTexture(GL_TEXTURE_2D, object.normalTexture);
 
-	//object.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
 
 	loadObjFile("Monk_Giveaway_Fixed.obj", object2.meshVertices, object2.meshIndices);
 	object2.geometry.numIndices = object2.meshIndices.size();
@@ -399,123 +307,17 @@ void init() {
 
 	glUniform1i(diffuseTextureUniformLocation, 0);
 	glActiveTexture(GL_TEXTURE0);
-	//glGenTextures(0, &object.diffuseTexture);
 	glBindTexture(GL_TEXTURE_2D, object2.diffuseTexture);
 
 	glUniform1i(specularUniformLocation, 1);
 	glActiveTexture(GL_TEXTURE1);
-	//glGenTextures(1, &object.specularTexture);
 	glBindTexture(GL_TEXTURE_2D, object2.specularTexture);
 
 	glUniform1i(normalTexUniformLocation, 2);
 	glActiveTexture(GL_TEXTURE2);
-	//glGenTextures(2, &object.normalTexture);
 	glBindTexture(GL_TEXTURE_2D, object2.normalTexture);
 
-	//object2.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
-
 	
-	
-	/*getPlaneVbIbLen(vbLen4, ibLen4);
-	areaFloor.geometry.indexBO = ibLen4;
-	areaFloor.geometry.vertexBO = vbLen4;
-	areaFloor.geometry.numIndices = ibLen4;
-
-	std::vector<VertexPrime> vtx4(vbLen4);
-	std::vector<unsigned short> idx4(ibLen4);
-
-	makePlane(6, vtx4.begin(), idx4.begin());
-
-
-	glGenBuffers(1, &areaFloor.geometry.vertexBO);
-	glBindBuffer(GL_ARRAY_BUFFER, areaFloor.geometry.vertexBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * vtx4.size(), vtx4.data(), GL_STATIC_DRAW);
-	glGenBuffers(1, &areaFloor.geometry.indexBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, areaFloor.geometry.indexBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * idx4.size(), idx4.data(), GL_STATIC_DRAW);
-*/
-	/*areaFloor.diffuseTexture = loadGLTexture("ghost.png");
-	areaFloor.specularTexture = loadGLTexture("ghost.png");
-	areaFloor.normalTexture = loadGLTexture("ghost.png");*/
-
-	//glUniform1i(diffuseTextureUniformLocation, 0);
-	//glActiveTexture(GL_TEXTURE0);
-	////glGenTextures(0, &diffuseTexture);
-	//glBindTexture(GL_TEXTURE_2D, areaFloor.diffuseTexture);
-
-	//glUniform1i(specularUniformLocation, 1);
-	//glActiveTexture(GL_TEXTURE1);
-	////glGenTextures(1, &specularTexture);
-	//glBindTexture(GL_TEXTURE_2D, areaFloor.specularTexture);
-
-	//glUniform1i(normalTexUniformLocation, 5);
-	//glActiveTexture(GL_TEXTURE5);
-	////glGenTextures(2, &normalTexture);
-	//glBindTexture(GL_TEXTURE_2D, areaFloor.normalTexture);
-	//std::vector<VertexPrime> meshVertices2;
-	//std::vector<unsigned short> meshIndices2;
-	//loadObjFile("Monk_Giveaway.obj", object2.meshVertices, object2.meshIndices);
-	//object2.geometry.numIndices = object2.meshIndices.size();
-	//object2.geometry.vertexBO = object2.meshVertices.size();
-	//object2.geometry.indexBO = object2.meshIndices.size();
-
-	//glGenBuffers(1, &object2.geometry.vertexBO);
-	//glBindBuffer(GL_ARRAY_BUFFER, object2.geometry.vertexBO);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPrime) * object2.meshVertices.size(), object2.meshVertices.data(), GL_STATIC_DRAW);
-
-	//glGenBuffers(1, &object2.geometry.indexBO);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object2.geometry.indexBO);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * object2.meshIndices.size(), object2.meshIndices.data(), GL_STATIC_DRAW);
-
-
-	//object2.diffuseTexture = loadGLTexture("Monk_D.tga");
-	//object2.specularTexture = loadGLTexture("Monk_S.tga");
-	//object2.normalTexture = loadGLTexture("Monk_N.tga");
-
-	//glUniform1i(diffuseTextureUniformLocation, 0);
-	//glActiveTexture(GL_TEXTURE0);
-	//////glGenTextures(0, &diffuseTexture);
-	//glBindTexture(GL_TEXTURE_2D, object2.diffuseTexture);
-
-	//glUniform1i(specularUniformLocation, 1);
-	//glActiveTexture(GL_TEXTURE1);
-	//////glGenTextures(1, &specularTexture);
-	//glBindTexture(GL_TEXTURE_2D, object2.specularTexture);
-
-	//glUniform1i(normalTexUniformLocation, 2);
-	//glActiveTexture(GL_TEXTURE2);
-	//////glGenTextures(2, &normalTexture);
-	//glBindTexture(GL_TEXTURE_2D, object2.normalTexture);
-
-	//object2.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
-
-	
-	//areaFloor.specularTexture = areaFloor.diffuseTexture;
-	//areaFloor.normalTexture = areaFloor.diffuseTexture;
-
-	//areaFloor.binding(diffuseTextureUniformLocation, specularUniformLocation, normalTexUniformLocation);
-
-
-	/*glUniform1i(diffuseTextureUniformLocation, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, diffuseTexture);*/
-
-	/*glUniform1i(diffuseTextureUniformLocation1, 1);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, areaFloor.texture);*/
-
-	//object.binding(diffuseTextureUniformLocation);
-	//areaFloor.binding(diffuseTextureUniformLocation);
-	/*glUniform1i(specularUniformLocation, 1);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, specularTexture);
-
-	glUniform1i(normalTexUniformLocation, 2);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, normalTexture);*/
-
-	//glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
-	//glEnableVertexAttribArray(texCoordAttribute);
 	glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(VertexPrime), (void*)offsetof(VertexPrime, t));
 	glEnableVertexAttribArray(texCoordAttribute);
 
@@ -523,8 +325,7 @@ void init() {
 	
 
 
-	//object.geometry.numIndices = meshIndices.size();
-	//object.geometry.vertexBO = meshVertices.size();
+	
 	
 	
 	
@@ -545,7 +346,7 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 800);
-    glutCreateWindow("CS-6533");
+    glutCreateWindow("CS-6533 Clone Wars");
 
     glewInit();
     
@@ -553,9 +354,6 @@ int main(int argc, char **argv) {
     glutReshapeFunc(reshape);
     glutIdleFunc(idle);
 
-	//glutKeyboardFunc(keyboard);
-	//glutMouseFunc(mouse);     
-	//glutMotionFunc(mouseMove);
     
     init();
     glutMainLoop();

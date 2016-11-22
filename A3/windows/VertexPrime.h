@@ -85,21 +85,18 @@ struct Entity {
 	void binding(GLuint diffuseTexUniformLoc, GLuint specularUniformLoc, GLuint normalTexUniformLoc) {
 		glUniform1i(diffuseTexUniformLoc, 0);
 		glActiveTexture(GL_TEXTURE0);
-		//glGenTextures(0, &diffuseTexture);
 		glBindTexture(GL_TEXTURE_2D, diffuseTexture);
 
 		glUniform1i(specularUniformLoc, 1);
 		glActiveTexture(GL_TEXTURE1);
-		//glGenTextures(1, &specularTexture);
 		glBindTexture(GL_TEXTURE_2D, specularTexture);
 
 		glUniform1i(normalTexUniformLoc, 2);
 		glActiveTexture(GL_TEXTURE2);
-		//glGenTextures(2, &normalTexture);
 		glBindTexture(GL_TEXTURE_2D, normalTexture);
 	}
 
-	//if (parent != nullptr) 
+	
 	void adoption(Entity* theChild) {
 		theChild->parent = this;
 		child = theChild;

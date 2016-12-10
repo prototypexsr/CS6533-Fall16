@@ -251,8 +251,8 @@ void init() {
 	specularUniformLocation = glGetUniformLocation(program, "specularTexture");
 	normalTexUniformLocation = glGetUniformLocation(program, "normalTexture");
 
-	lightDirectionUniformLocation0 = glGetUniformLocation(program, "lights[0].lightDirection");
-	lightDirectionUniformLocation1 = glGetUniformLocation(program, "lights[1].lightDirection");
+	//lightDirectionUniformLocation0 = glGetUniformLocation(program, "lights[0].lightDirection");
+	//lightDirectionUniformLocation1 = glGetUniformLocation(program, "lights[1].lightDirection");
 	//lightDirectionUniformLocation1
 	//lightDirectionUniform = glGetUniformLocation(program, "lightDirection");
 
@@ -272,7 +272,7 @@ void init() {
 
 	object.diffuseTexture = loadGLTexture("Monk_D.tga");
 	object.specularTexture = loadGLTexture("Monk_S.tga");
-	object.normalTexture = loadGLTexture("Monk_N.tga");
+	object.normalTexture = loadGLTexture("Monk_N_Normal_Bump.tga");
 	
 	glUniform1i(diffuseTextureUniformLocation, 0);
 	glActiveTexture(GL_TEXTURE0);

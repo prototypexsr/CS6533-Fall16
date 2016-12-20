@@ -93,7 +93,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="fragment_textured.glsl" />
+    <None Include="fragment_textured_blurredh.glsl" />
+    <None Include="fragment_textured_blurredv.glsl" />
+    <None Include="fragment_textured_final_additive.glsl" />
     <None Include="fragment_textured_frame.glsl" />
+    <None Include="fragment_textured_luminance.glsl" />
     <None Include="vertex_textured.glsl" />
     <None Include="vertex_textured_frame.glsl" />
   </ItemGroup>

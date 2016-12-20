@@ -49,5 +49,17 @@
     <None Include="fragment_textured_frame.glsl">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="fragment_textured_luminance.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="fragment_textured_blurredh.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="fragment_textured_blurredv.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="fragment_textured_final_additive.glsl">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -1,12 +1,12 @@
-/*Stefan Cherubin HW3
-Seeing Double? It's because there are two monks!
-The left monk has a blue light with green specular light
-The right monk has a green light with red specular light (It may be difficult to see the red specular light, 
-it's easiet to see it on the monk's back)
+/*Stefan Cherubin HW4
+This is the same as HW3, except that there are some post processing shaders used this time (in the following order):
 
-Both models have a specular and normal texture applied to them.
+HDR Tone Mapping + Exposure
+Luminance 
+Horizontal Blur
+Vertical Blur
 
-Other things to note: Matrix related functions such as eyeMatrix translation are moved into Transform struct.
+Originally wanted to HDR Tone Mapping + Color Correction LUTs, but couldn't get LUT to work properly.
 
 */
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -20,7 +20,7 @@ Other things to note: Matrix related functions such as eyeMatrix translation are
 #include <GL\freeglut.h>
 
 
-GLuint program; 
+GLuint program, screenShaderProgram, luminanceShaderProgram, blurredShaderProgramh, blurredShaderProgramv, finaladditiveShaderProgram;
 GLuint vertPositionVBO, vertTexCoordVBO, colorVBO, normalVBO;
 GLuint positionAttribute, colorAttribute, texCoordAttribute, normalAttribute, binormalAttribute, tangentAttribute;
 GLuint texture;
@@ -30,9 +30,9 @@ GLuint projectionMatrixUniformLocation;
 GLuint colorUniformLocation, normalUniformLocation, lightDirectionUniformLocation0, lightDirectionUniformLocation1, normalTexUniformLocation;
 GLuint diffuseTexture, specularTexture, diffuseTexture2, normalTexture;
 GLuint diffuseTextureUniformLocation, diffuseTextureUniformLocation1;
-GLuint specularUniformLocation;
+GLuint specularUniformLocation, blurredUniform;
 GLuint cubeMap, lookupTableUniform;
-GLuint frameBuffer, frameBufferTexture, depthBufferTexture, frameBufferUniformLocation;
+GLuint frameBuffer, frameBufferTexture, depthBufferTexture, frameBufferUniformLocation, luminanceFBO, blurredhFBO, blurredvFBO, exposureFBO, finaladdFBO;
 GLuint screenTrianglesPositionBuffer, screenTrianglesPositionAttribute, screenTrianglesUVBuffer, screenTrianglesTexCoordAttribute;
  
 float textureOffset = 0.0;
@@ -51,15 +51,7 @@ int ibLen4, vbLen4;
 
  
 void display(void) {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glUniform1f(timeUniform, textureOffset);
-	int timeSinceStart = glutGet(GLUT_ELAPSED_TIME);
-	glUniform1f(timeUniform, (float)timeSinceStart / 1000.0f);
-	
-	
-	//Matrix related functions moved inside transform struct
-
-	
+	//NORMAL RENDERING
 	object.transform.setEyeTranslation(8.0, 6.05, 10.25);
 	object.transform.createProjectionMatrix(projectionMatrixUniformLocation);
 	object.transform.setModelviewMatrix();
@@ -69,29 +61,18 @@ void display(void) {
 	object2.transform.createProjectionMatrix(projectionMatrixUniformLocation);
 	object2.transform.setModelviewMatrix();
 	object2.transform.rotateYwithTime(timeUniform);
-	
-	/*ball.r = 1.0;
-	cube.g = 1.0;
-	bigCube.b = 1.0;*/
 
-	//For now, all three entites will share everything, except for color attribute
-	
-	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
-	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
-
-	
-
-	/*glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, vertPositionVBO);
 	glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(positionAttribute);
 
 	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
 	glVertexAttribPointer(colorAttribute, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(colorAttribute);
-*/
-	/*glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
 	glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(normalAttribute);*/
+	glEnableVertexAttribArray(normalAttribute);
 
 	glEnableVertexAttribArray(binormalAttribute);
 	glVertexAttribPointer(binormalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(VertexPrime), (void*)offsetof(VertexPrime, b));
@@ -101,34 +82,98 @@ void display(void) {
 	glVertexAttribPointer(tangentAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(VertexPrime), (void*)offsetof(VertexPrime, tg));
 	glDisableVertexAttribArray(tangentAttribute);
 
-	glBindBuffer(GL_ARRAY_BUFFER, screenTrianglesPositionBuffer);
-	glVertexAttribPointer(screenTrianglesPositionAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(screenTrianglesPositionAttribute);
 
-	glBindBuffer(GL_ARRAY_BUFFER, screenTrianglesUVBuffer);
-	glVertexAttribPointer(screenTrianglesTexCoordAttribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(screenTrianglesTexCoordAttribute);
 
-	//glDrawArrays(GL_TRIANGLES, 0, 6);
-	glDisableVertexAttribArray(screenTrianglesPositionAttribute);
-	glDisableVertexAttribArray(screenTrianglesTexCoordAttribute);
-	//glDrawArrays replaced by glDrawElement in Geometry class
-	//glDrawArrays(GL_TRIANGLES, 0, meshVertices.size());
-	//glDisableVertexAttribArray(positionAttribute);
-	//glDisableVertexAttribArray(colorAttribute);
-	//glDisableVertexAttribArray(normalAttribute);
+	glDisableVertexAttribArray(positionAttribute);
+	glDisableVertexAttribArray(colorAttribute);
+	glDisableVertexAttribArray(normalAttribute);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+	glViewport(0, 0, 800, 800);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glUseProgram(program);
+	glClearColor(0.2, 0.2, 0.2, 1.0);
+
+
+	
+	
+
+	glUniform1f(timeUniform, textureOffset);
+	int timeSinceStart = glutGet(GLUT_ELAPSED_TIME);
+	glUniform1f(timeUniform, (float)timeSinceStart / 1000.0f);
+	
+	
+	
+	
+
+	
+	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
 
 	
 
+	
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, exposureFBO);
+	glViewport(0, 0, 800, 800);	
 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	//HDR TONE MAPPING + EXPOSURE
+	glUseProgram(screenShaderProgram);
+
+	
+	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+
+
+	//LUMINANCE SHADER
+	glBindFramebuffer(GL_FRAMEBUFFER, luminanceFBO);
+	glViewport(0, 0, 800, 800);
+	
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	glUseProgram(luminanceShaderProgram);
+	
+
+	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+
+
+	
+	//HORIZONTAL BLUR SHADER
+	glBindFramebuffer(GL_FRAMEBUFFER, blurredhFBO);
+	glViewport(0, 0, 800, 800);
+	
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	glUseProgram(blurredShaderProgramh);
+	
+
+	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+
+
+
+	//VERTICAL BLUR SHADER
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, 800, 800);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	glUseProgram(blurredShaderProgramv);
+	
+	object.Draw(object.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+	object2.Draw(object2.transform.modelviewMatrix, positionAttribute, normalAttribute, modelviewMatrixUniformLocation, normalUniformLocation, colorUniformLocation, 1.0, 0.1, 0.1);
+
+
+	
+
+	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
-
-	glClearColor(0.1, 0.1, 0.1, 1.0);
-
-	
 
     glutSwapBuffers();
 }
@@ -245,20 +290,34 @@ void init() {
 	//glEnable(GL_LIGHT1);
 
 	program = glCreateProgram();
+	
 	readAndCompileShader(program, "vertex_textured.glsl", "fragment_textured.glsl");
-	//readAndCompileShader(program, "vertex_textured_frame.glsl", "fragment_textured_frame.glsl");
+	
+	screenShaderProgram = glCreateProgram();
+	readAndCompileShader(screenShaderProgram, "vertex_textured.glsl", "fragment_textured_frame.glsl");
 
-	glUseProgram(program);
+	luminanceShaderProgram = glCreateProgram();
+	readAndCompileShader(luminanceShaderProgram, "vertex_textured.glsl", "fragment_textured_luminance.glsl");
+
+	blurredShaderProgramh = glCreateProgram();
+	readAndCompileShader(blurredShaderProgramh, "vertex_textured.glsl", "fragment_textured_blurredh.glsl");
+
+	blurredShaderProgramv = glCreateProgram();
+	readAndCompileShader(blurredShaderProgramv, "vertex_textured.glsl", "fragment_textured_blurredv.glsl");
+
+	finaladditiveShaderProgram = glCreateProgram();
+	readAndCompileShader(finaladditiveShaderProgram, "vertex_textured.glsl", "fragment_textured_final_additive.glsl");
 
 
 	positionAttribute = glGetAttribLocation(program, "position");
-	//screenTrianglesPositionAttribute = glGetAttribLocation(program, "position");
+	
 
-	//colorAttribute = glGetAttribLocation(program, "color");
+
 	timeUniform = glGetUniformLocation(program, "time");
 	normalAttribute = glGetAttribLocation(program, "normal");
 	texCoordAttribute = glGetAttribLocation(program, "texCoord");
-	//screenTrianglesTexCoordAttribute = glGetAttribLocation(program, "texCoord");
+
+	
 
 	binormalAttribute = glGetAttribLocation(program, "binormal");
 	tangentAttribute = glGetAttribLocation(program, "tangent");
@@ -275,50 +334,25 @@ void init() {
 	frameBufferUniformLocation = glGetUniformLocation(program, "screenFrameBuffer");
 	lookupTableUniform = glGetUniformLocation(program, "lookupTable");
 
-	//lightDirectionUniformLocation0 = glGetUniformLocation(program, "lights[0].lightDirection");
-	//lightDirectionUniformLocation1 = glGetUniformLocation(program, "lights[1].lightDirection");
-	//lightDirectionUniformLocation1
-	//lightDirectionUniform = glGetUniformLocation(program, "lightDirection");
-	glGenBuffers(1, &screenTrianglesUVBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, screenTrianglesUVBuffer);
-	GLfloat screenTriangleUVs[] = {
-		1.0f, 1.0f,
-		1.0f, 0.0f,
-		0.0f, 0.0,
-		0.0f, 0.0f,
-		0.0f, 1.0f,
-		1.0f, 1.0f
-	};
-	glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), screenTriangleUVs, GL_STATIC_DRAW);
+	lightDirectionUniformLocation0 = glGetUniformLocation(program, "lights[0].lightDirection");
+	lightDirectionUniformLocation1 = glGetUniformLocation(program, "lights[1].lightDirection");
 
-	glGenBuffers(1, &screenTrianglesPositionBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, screenTrianglesPositionBuffer);
-	GLfloat screenTrianglePositions[] = {
-		1.0f, 1.0f,
-		1.0f, -1.0f,
-		-1.0f, -1.0f,
-		-1.0f, -1.0f,
-		-1.0f, 1.0f,
-		1.0f, 1.0f
-	};
-	glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), screenTrianglePositions, GL_STATIC_DRAW);
+	blurredUniform = glGetUniformLocation(finaladditiveShaderProgram, "blurredHighlights");
+	
 
-	glUniform1i(frameBufferUniformLocation, 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, frameBufferTexture);
 
-	glGenFramebuffers(1, &frameBuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
-
-	glGenTextures(1, &frameBufferTexture);
 	glBindTexture(GL_TEXTURE_2D, frameBufferTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F_ARB, 1024, 1024, 0, GL_RGB,
-		GL_FLOAT, NULL);
+	GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1024, 1024, 0, GL_DEPTH_COMPONENT,
+		GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+
+
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 		GL_TEXTURE_2D, frameBufferTexture, 0);
-
 
 	glGenTextures(1, &depthBufferTexture);
 	glBindTexture(GL_TEXTURE_2D, depthBufferTexture);
@@ -327,13 +361,13 @@ void init() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 1024, 1024);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
 		depthBufferTexture, 0);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 	
+	
+
 
 	//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropyAmount);
 	loadObjFile("Monk_Giveaway_Fixed.obj", object.meshVertices, object.meshIndices);
@@ -397,15 +431,12 @@ void init() {
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, object2.normalTexture);
 
-	
-	glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(VertexPrime), (void*)offsetof(VertexPrime, t));
 	glEnableVertexAttribArray(texCoordAttribute);
-
+	glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(VertexPrime), (void*)offsetof(VertexPrime, t));
 	
 	
-
-
 	
+
 	
 	
 	
@@ -426,7 +457,7 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize(800, 800);
-    glutCreateWindow("CS-6533 Clone Wars");
+    glutCreateWindow("CS-6533 Rogue Two");
 
     glewInit();
     

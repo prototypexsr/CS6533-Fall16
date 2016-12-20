@@ -22,7 +22,6 @@ float attenuate(float dist, float a, float b) {
 return 1.0 / (1.0 + a*dist + b*dist*dist);
 }
 uniform float exposure;
-
 vec4 lookup(vec4 textureColor, sampler2D lookupTable) {
 float blueColor = textureColor.b * 63.0;
 vec2 quad1;
@@ -75,16 +74,15 @@ float specular = pow(max(0.0, dot(h, varyingNormal)), 64.0);
 specularColor += lights[i].specularLightColor * specular * attenuation;
 }
 
-const float gamma = 2.2;
-vec3 hdrColor = texture2D( screenFramebuffer, varyingTexCoord).rgb;
-vec3 mapped = hdrColor / (hdrColor + vec3(1.0));
-mapped = pow(mapped, vec3(gamma));
+
 
 
 vec3 intensity = (texture2D(diffuseTexture, varyingTexCoord).xyz * diffuseColor)
 + (specularColor * texture2D(specularTexture, varyingTexCoord).x) + (normalColor * texture2D(normalTexture, varyingTexCoord).x);
-vec4 correctedColor = lookup( vec4(specularColor.xyz, 1.0), lookupTable);
-gl_FragColor = (vec4(intensity.xyz, 1.0) * correctedColor + vec4(mapped.xyz, 1.0) ) ;
+
+
+gl_FragColor = vec4(intensity.xyz, 1.0) ;
+
 
 
 
